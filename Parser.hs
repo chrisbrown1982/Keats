@@ -3,23 +3,28 @@ module Parser where
 import Syntax 
 import Parsing
 
-parseTerm :: Parser Term 
-parseTerm = 
-            parseVar ||| parseAbs ||| parseApp
+parseTerm1 :: Parser Term 
+parseTerm1 = do
+                t1 <- parseTerm2 
+                (parseRest t1) ||| return t1
+    where 
+       parseRest t1 = do
+                ts <- many parseTerm2             
+                return (foldl (App) t1 ts)
 
-parseApp :: Parser Term 
-parseApp = do
-                t1 <- parseTerm 
-                t2 <- parseTerm 
-                return (App t1 t2)
+parseTerm2 :: Parser Term 
+parseTerm2 = 
+            parseAbs ||| parseVar
+
+
 
 parseAbs :: Parser Term 
 parseAbs = do 
-                char '\\'
+                symbol "\\"
                 var <- identifier 
-                char '.' 
-                t  <- parseTerm 
-                char ':'
+                symbol "." 
+                t  <- parseTerm1 
+                symbol ":"
                 ty <- parseType 
                 return (Abs (Var var) t ty )
 
@@ -29,16 +34,15 @@ parseVar = do
                 return (VarT (Var var))
 
 parseType :: Parser Type 
-parseType = parseFunType ||| parseKind
-
-parseKind :: Parser Type 
-parseKind = do
+parseType = do
                 symbol "*" 
-                return TypeVar 
+                restType ||| return TypeVar 
 
-parseFunType :: Parser Type 
-parseFunType = do
-                    ty1 <- parseType 
-                    symbol "->"
-                    ty2 <- parseType 
-                    return (Fun ty1 ty2)
+    where restType =
+            do 
+                symbol "->"
+                t' <- parseType 
+                return (Fun TypeVar t' )
+                
+
+
