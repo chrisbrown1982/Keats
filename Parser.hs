@@ -20,10 +20,12 @@ parseTerm2 =
 
 parseAbs :: Parser Term 
 parseAbs = do 
+                symbol "("
                 symbol "\\"
                 var <- identifier 
                 symbol "." 
                 t  <- parseTerm1 
+                symbol ")"
                 symbol ":"
                 ty <- parseType 
                 return (Abs (Var var) t ty )
