@@ -2,7 +2,7 @@ module TypeChecker where
 
 import Syntax
 
--- import Pretty
+import Pretty
 
 import Control.Monad.Reader
 import Control.Monad.Except
@@ -35,7 +35,7 @@ lookupTy var = do
 					con <- ask
 					case lookup var con of 
 						Just ty1 -> return ty1
-						Nothing  -> err ("Nothing in context for " ++ (show var) ++ " in context " ++ (show con))
+						Nothing  -> err ("Nothing in context for " ++ (printVar var) ++ " in context " ++ (printContext con))
 
 extendCtx entry m = local (\con -> [entry]++con) m 
 
@@ -46,7 +46,7 @@ kindCheck (TypeVar v) Star = do
 								HasKind Star -> do
 													con <- ask
 													return (MkTyDerivation [] (MkTyConclusion con (TypeVar v) Star))
-								k -> err ("Type :" ++ (show v) ++ " does not have kind * instead has " ++ (show k))
+								k -> err ("Type :" ++ (printType (TypeVar v)) ++ " does not have kind * instead has " ++ (printInfo k))
 
 kindCheck (Fun t1 t2) Star = do 
 								p1 <- kindCheck t1 Star 
@@ -74,26 +74,34 @@ transformAbs :: Term -> Term
 transformAbs (Abs [] t) = t
 transformAbs (Abs (v:vars) t) = Abs [v] (transformAbs (Abs vars t))
 
+
+getType :: Derivation -> Type
+getType (MkDerivation pre (MkConclusion con' t' (MkTyDerivation _ (MkTyConclusion _ ty ki)))) = ty 
+
+getTypeDerivation :: Derivation -> TypeDerivation
+getTypeDerivation (MkDerivation pre (MkConclusion con' t' a@(MkTyDerivation _ (MkTyConclusion _ ty ki)))) = a
+
+
 typeCheck :: Term -> Type -> TcMonad Derivation 
 typeCheck a@(Abs [v] t) (Fun ty1 ty2) = do 
 		kD <- kindCheck (Fun ty1 ty2) Star
-		p@(MkDerivation pre (MkConclusion con' t' (MkTyDerivation _ (MkTyConclusion _ ty ki)))) <- extendCtx (TermV v, HasType ty1) (typeCheck t ty2)
+		p <- extendCtx (TermV v, HasType ty1) (typeCheck t ty2)
 		con <- ask
-		if ty == ty2 then return $  MkDerivation [p] (MkConclusion con a kD)
-			 	     else err ("Type  in abstraction " ++ (show a) ++ " doesn't match expected type " ++ (show ty2))
+		if getType p == ty2 then return $  MkDerivation [p] (MkConclusion con a kD)
+			 	     else err ("Type  in abstraction " ++ (printTerm a) ++ " doesn't match expected type " ++ (printType ty2))
 
 typeCheck a@(Abs (v:vars) t) (Fun ty1 ty2) = do
 		-- extend the context to contain the new lambda expression
 		let (Abs [v2] t2) = transformAbs a
 		kD <- kindCheck (Fun ty1 ty2) Star
-		p@(MkDerivation pre (MkConclusion con' t' (MkTyDerivation _ (MkTyConclusion _ ty ki)))) <- extendCtx (TermV v2, HasType ty1) (typeCheck t2 ty2)
+		p <- extendCtx (TermV v2, HasType ty1) (typeCheck t2 ty2)
 		con <- ask
-		if ty == ty2 then return $  MkDerivation [p] (MkConclusion con a kD)
-			 	     else err ("Type  in abstraction " ++ (show a) ++ " doesn't match expected type " ++ (show ty2) ++ " : " ++ (show ty)) -- ++ (printType ty2)
+		if getType p == ty2 then return $  MkDerivation [p] (MkConclusion con a kD)
+			 	     else err ("Type  in abstraction " ++ (printTerm a) ++ " doesn't match expected type " ++ (printType ty2) ++ " : " ++ (printType (getType p))) -- ++ (printType ty2)
 typeCheck t ty = do
-					p@(MkDerivation pre (MkConclusion con' t' (MkTyDerivation _ (MkTyConclusion _ ty2 ki)))) <- inferType t 
-				 	if (ty == ty2) then return p 
-				 			       else err ("Type Mismatch in Term " ++ (show t) ++ " with type " ++ (show ty))
+					p <- inferType t 
+				 	if (ty == getType p) then return p 
+				 			       else err ("Type Mismatch in Term " ++ (printTerm t) ++ " with type " ++ (printType ty))
 
 inferType :: Term -> TcMonad Derivation
 inferType (Ann t ty) = do 
@@ -109,20 +117,11 @@ inferType (VarT v) = do
 						return $ MkDerivation [] (MkConclusion con (VarT v) kD)
 inferType a@(App t1 t2) = do 
 	p1@(MkDerivation pre (MkConclusion con' t1 (MkTyDerivation _ (MkTyConclusion _ (Fun ty1 ty2) ki)))) <- inferType t1 
-	p2@(MkDerivation pre2 (MkConclusion con t2 ty'@(MkTyDerivation _ (MkTyConclusion _ ty1' ki)))) <- typeCheck t2 ty1 
+	p2 <- typeCheck t2 ty1 
 	con <- ask 
-	if ty1 == ty1' then return $ MkDerivation [p1,p2] (MkConclusion con a ty') 
+	if ty1 == getType p2 then return $ MkDerivation [p1,p2] (MkConclusion con a (getTypeDerivation p2))
 				   else err "Application type error!"
 
 inferType t = do 
-				err ("unable to infer type for term " ++ (show t))
+				err ("unable to infer type for term " ++ (printTerm t))
 
-{-
-inferType a@(App t1 t2) = do 
-	p1@(MkDerivation pre (MkConclusion con' t1 (Fun ty1 ty2))) <- inferType t1 
-	p2@(MkDerivation pre2 (MkConclusion con t2 ty1')) <- inferType t2 
-	con <- ask 
-	if ty1 == ty1' then return $ MkDerivation [p1,p2] (MkConclusion con a (Fun ty1 ty2)) 
-				   else err "Application type error!"
-
--}

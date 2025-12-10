@@ -6,23 +6,41 @@ import GHC.Conc (childHandler)
 
 import Syntax
 
+
+printDerivations :: [ Derivation ] -> String 
+printDerivations [] = ""
+printDerivations (d:ds) = printTypeConclusion d ++ "\n" ++ printDerivations ds
+
 printTerm :: Term -> String 
 printTerm (VarT (Var x)) = x 
 printTerm (App t1 t2) = printTerm t1 ++ " " ++ printTerm t2
-printTerm (Abs (Var x) t1 ty) = "(\\" ++ x ++ ". " ++ printTerm t1 ++ ")"
+printTerm (Abs [] t1) = printTerm t1
+printTerm (Abs (Var v:vars) t1) = "(\\" ++ v ++ ". " ++ printTerm (Abs vars t1) ++ ")"
+printTerm (Ann t ty) = printTerm t ++ " : " ++ printType ty
 
+printVar :: VarInfo -> String 
+printVar (TypeV (Var v)) = v
+printVar (TermV (Var v)) = v
 
 printContext :: Context -> String 
 printContext [] = ""
-printContext [(Var x, ty)] = x ++ " : " ++ printType ty
-printContext ((Var x,ty):r) = x ++ " : " ++ printType ty ++ " ,"  ++ printContext r
+printContext [(x,ty)] = printVar x ++ " : " ++ printInfo ty
+printContext ((x,ty):r) = printVar x ++ " : " ++ printInfo ty ++ " ,"  ++ printContext r
+
+
+printKind :: Kind -> String 
+printKind Star = "*"
+
+printInfo :: Info -> String 
+printInfo (HasType ty) = printType ty
+printInfo (HasKind k)  = printKind k 
 
 printType :: Type -> String 
 printType (Fun ty1 ty2) = "(" ++ printType ty1 ++ " -> " ++ printType ty2 ++ ")"
-printType (TypeVar) = "*"
+printType (TypeVar (Var n)) = n
 
 printConclusion :: Conclusion -> String 
-printConclusion (MkConclusion con te ty) = "{" ++ printContext con ++ "} |- " ++ printTerm te ++ " : " ++ printType ty
+printConclusion (MkConclusion con te ty) = "{" ++ printContext con ++ "} |- " ++ printTerm te ++ " : " ++ printTypeDerivation ty
 
 derivationTree :: Derivation -> Tree String 
 derivationTree (MkDerivation child con) = Node (printConclusion con) (mkChildren child)
@@ -30,7 +48,11 @@ derivationTree (MkDerivation child con) = Node (printConclusion con) (mkChildren
           mkChildren (p:ps) = derivationTree p : mkChildren ps
 
 printTypeConclusion :: Derivation -> String 
-printTypeConclusion (MkDerivation child (MkConclusion con te ty)) = printTerm te ++ " : " ++ printType ty
+printTypeConclusion (MkDerivation child (MkConclusion con te ty)) = printTerm te ++ " : " ++ printTypeDerivation ty
+
+printTypeDerivation :: TypeDerivation -> String 
+printTypeDerivation (MkTyDerivation child (MkTyConclusion _ ty _) ) = printType ty 
+
 
 {-
 pp :: Tree String -> Box

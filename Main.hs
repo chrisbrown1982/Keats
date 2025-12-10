@@ -2,7 +2,7 @@ module Main where
 
 import Grammar
 import Syntax
---import Pretty
+import Pretty
 import TypeChecker
 import Data.Maybe
 
@@ -15,13 +15,9 @@ typeFile f =
 	do 
 		x <- readFile f 
 		let mod = parseModule x 
-		putStrLn $ show mod
-
-
-		der <- runTcMonad [] (typeCheckM mod)
-
-		putStrLn $ show der
-
+		-- putStrLn $ show mod
+		Right der <- runTcMonad [] (typeCheckM mod)
+		putStrLn $ printDerivations der
 		return [] 
 
 
