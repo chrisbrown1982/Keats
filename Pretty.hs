@@ -6,13 +6,23 @@ import GHC.Conc (childHandler)
 
 import Syntax
 
+printDerivationDef :: String -> [ (String, Derivation) ] -> Box 
+printDerivationDef d [] = error "Cannot find definition in context to print!"
+printDerivationDef d ((n,de):ds) | d == n     = pp (derivationTree de)
+                        		 | otherwise  = printDerivationDef d ds
 
-printDerivations :: [ Derivation ] -> String 
+printTypeDef :: String -> [ (String, Derivation) ] -> String 
+printTypeDef d [] = "Cannot find definition in context to print!"
+printTypeDef d ((n,de):ds) | d == n     = n ++ " = " ++ printTypeConclusion de ++ "\n"
+                        | otherwise  = printTypeDef d ds
+
+printDerivations :: [ (String, Derivation) ] -> String 
 printDerivations [] = ""
-printDerivations (d:ds) = printTypeConclusion d ++ "\n" ++ printDerivations ds
+printDerivations ((n,d):ds) = n ++ " = " ++ printTypeConclusion d ++ "\n" ++ printDerivations ds
 
 printTerm :: Term -> String 
 printTerm (VarT (Var x)) = x 
+printTerm (App t1 t@(App t2 t3)) = printTerm t1 ++ " (" ++ printTerm t ++ ")"
 printTerm (App t1 t2) = printTerm t1 ++ " " ++ printTerm t2
 printTerm (Abs [] t1) = printTerm t1
 printTerm (Abs (Var v:vars) t1) = "(\\" ++ v ++ ". " ++ printTerm (Abs vars t1) ++ ")"
@@ -54,7 +64,7 @@ printTypeDerivation :: TypeDerivation -> String
 printTypeDerivation (MkTyDerivation child (MkTyConclusion _ ty _) ) = printType ty 
 
 
-{-
+
 pp :: Tree String -> Box
 pp (Node here []      ) = text here
 pp (Node here children) = vcat center1 [premises, separator, conclusion]
@@ -72,4 +82,3 @@ sampleTree = Node "<z:=x; x:=y; y:=z, s> -> s'''"
         ]
     ,Node "<y:=z, s''> -> s'''" []
     ]
--}

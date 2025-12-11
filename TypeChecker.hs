@@ -57,10 +57,10 @@ kindCheck (Fun t1 t2) Star = do
 
 
 
-typeCheckM :: Module -> TcMonad [ Derivation ]
+typeCheckM :: Module -> TcMonad [ (String, Derivation) ]
 typeCheckM (Module name decls) = typeCheckDecls decls 
 
-typeCheckDecls :: [ Decl ] -> TcMonad [ Derivation ]
+typeCheckDecls :: [ Decl ] -> TcMonad [ (String, Derivation) ]
 typeCheckDecls [] = return [] 
 typeCheckDecls (Assume v t : decs ) = extendCtx (TermV v, HasType t) (typeCheckDecls decs)	
 typeCheckDecls (Type v k : decs) = extendCtx (TypeV v, HasKind k) (typeCheckDecls decs)
@@ -68,7 +68,7 @@ typeCheckDecls (Decl n t : ds) = do
 									-- kD <- kindCheck t Star
 									p@(MkDerivation pre (MkConclusion con' t' (MkTyDerivation _ (MkTyConclusion _ ty ki)))) <- inferType t 
 									ps <- extendCtx (TermV (Var n), HasType ty) (typeCheckDecls ds)
-									return (p:ps)
+									return ((n,p):ps)
 
 transformAbs :: Term -> Term
 transformAbs (Abs [] t) = t

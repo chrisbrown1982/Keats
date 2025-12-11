@@ -1,24 +1,14 @@
 module Main where
 
-import Grammar
-import Syntax
-import Pretty
-import TypeChecker
+import REPL
+
+
 import Data.Maybe
 
 main :: IO ()
-main = putStrLn "Welcome to Keats!"
+main = repl inter [] 
 
 
-typeFile :: FilePath -> IO [Either Err Derivation]
-typeFile f = 
-	do 
-		x <- readFile f 
-		let mod = parseModule x 
-		-- putStrLn $ show mod
-		Right der <- runTcMonad [] (typeCheckM mod)
-		putStrLn $ printDerivations der
-		return [] 
 
 
 example = "(\\ x . x) : * -> * "
