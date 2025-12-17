@@ -1,0 +1,57 @@
+cabal-Version: 3.16
+name: keats
+version: 0.1
+license: MIT
+license-file: LICENSE
+copyright: (c) 2025 University of St Andrews
+description: An implementation of a simply typed lambda calculuis
+author: Christopher Brown <cmb21@st-andrews.ac.uk>, based on code by pi-forall team.
+maintainer: Christopher Brown <cmb21@st-andrews.ac.uk>
+build-type: Simple
+tested-with: GHC == 9.12.2
+category: Compilers/Interpreters
+homepage: https://github.com/chrisbrown1982/Keats
+synopsis: Demo implementation of simply typed lambda calculus
+
+source-repository head
+  type: git
+  location: https://github.com/chrisbrown1982/Keats
+
+common shared-properties
+  default-language:
+    GHC2021
+  ghc-options:
+    -Wall 
+  default-extensions: 
+    DefaultSignatures
+    DeriveAnyClass
+    DerivingStrategies 
+     
+  build-depends:  
+    base,
+    mtl,
+    unbound-generics,
+    transformers,
+    array,
+    containers,
+    directory,
+    filepath,
+    boxes   
+ 
+
+library
+  import: shared-properties
+  hs-source-dirs: src
+  exposed-modules: 
+    AlexToken
+    Grammar
+    Pretty
+    Syntax
+    TypeChecker
+    REPL
+  
+executable keats
+  import: shared-properties
+  build-depends: keats
+  hs-source-dirs: app
+  main-is: Main.hs
