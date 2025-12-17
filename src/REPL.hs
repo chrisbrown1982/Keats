@@ -103,7 +103,7 @@ executeCommand int con cmd = case cmd of
 				x <- readFile f 
 				let mod = parseModule x 
 		
-				Right der <- runTcMonad [] (typeCheckM mod)
+				Right der <- runTcMonad (Context []) (typeCheckM mod)
 				putStrLn $ printDerivations der
 				return (Just der)
 	TypeOf d -> do 

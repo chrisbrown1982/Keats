@@ -3,8 +3,15 @@ module Pretty where
 import Data.Tree
 import Text.PrettyPrint.Boxes
 import GHC.Conc (childHandler)
+import Unbound.Generics.LocallyNameless qualified as Unbound
 
 import Syntax
+
+-- printBinder :: Term -> (String, String)
+printBinder b = 
+    Unbound.lunbind b $ \(n, body) -> do 
+        return (varString n, printTerm body)
+        
 
 printDerivationDef :: String -> [ (String, Derivation) ] -> Box 
 printDerivationDef d [] = error "Cannot find definition in context to print!"
@@ -21,21 +28,20 @@ printDerivations [] = ""
 printDerivations ((n,d):ds) = n ++ " = " ++ printTypeConclusion d ++ "\n" ++ printDerivations ds
 
 printTerm :: Term -> String 
-printTerm (VarT (Var x)) = x 
+printTerm (VarT x) = varString x 
 printTerm (App t1 t@(App t2 t3)) = printTerm t1 ++ " (" ++ printTerm t ++ ")"
 printTerm (App t1 t2) = printTerm t1 ++ " " ++ printTerm t2
-printTerm (Abs [] t1) = printTerm t1
-printTerm (Abs (Var v:vars) t1) = "(\\" ++ v ++ ". " ++ printTerm (Abs vars t1) ++ ")"
+printTerm (Abs bnd) = "ABS HERE" -- let (n, body) = printBinder bnd in "(\\" ++ n ++ ". " ++ body ++ ")"
 printTerm (Ann t ty) = printTerm t ++ " : " ++ printType ty
 
 printVar :: VarInfo -> String 
-printVar (TypeV (Var v)) = v
-printVar (TermV (Var v)) = v
+printVar (TypeV x) = varString x
+printVar (TermV x) = varString x
 
 printContext :: Context -> String 
-printContext [] = ""
-printContext [(x,ty)] = printVar x ++ " : " ++ printInfo ty
-printContext ((x,ty):r) = printVar x ++ " : " ++ printInfo ty ++ " ,"  ++ printContext r
+printContext (Context []) = ""
+printContext (Context [(x,ty)]) = printVar x ++ " : " ++ printInfo ty
+printContext (Context ((x,ty):r)) = printVar x ++ " : " ++ printInfo ty ++ " ,"  ++ printContext (Context r)
 
 
 printKind :: Kind -> String 
@@ -47,7 +53,7 @@ printInfo (HasKind k)  = printKind k
 
 printType :: Type -> String 
 printType (Fun ty1 ty2) = "(" ++ printType ty1 ++ " -> " ++ printType ty2 ++ ")"
-printType (TypeVar (Var n)) = n
+printType (TypeVar x) = varString x
 
 printConclusion :: Conclusion -> String 
 printConclusion (MkConclusion con te ty) = "{" ++ printContext con ++ "} |- " ++ printTerm te ++ " : " ++ printTypeDerivation ty

@@ -36,11 +36,11 @@ Decls : Decl                                { [ $1 ]}
      | Decl Decls                           { $1 : $2 }
 
 Decl : let VAR '=' Term                     { Decl $2 $4}
-     | assume '(' VAR ':' Type ')'          { Assume (Var $3) $5 }
-     | type '(' VAR ':' Kind ')'            { Type (Var $3) $5   }
+     | assume '(' VAR ':' Type ')'          { Assume (varN $3) $5 }
+     | type '(' VAR ':' Kind ')'            { Type (varN $3) $5   }
 
 Term : Term ':' Type                        { Ann $1 $3}
-     | '\\' Vars '.' Term                   { Abs $2 $4}
+     | '\\' VAR '.' Term                    { lam $2 $4}
      | Tuple                                { $1 }
 
 
@@ -48,13 +48,10 @@ Tuple : Tuple Single                        { App $1 $2}
      | Single                               { $1 }
 
 Single : '(' Term ')'                       { $2}
-     | VAR                                  { VarT (Var $1)}
-
-Vars : VAR                                  { [Var $1] }
-     | VAR Vars                             { Var $1 : $2}
+     | VAR                                  { var $1}
 
 Type : Type '->' Type                       { Fun $1 $3 }
-     | VAR                                  { TypeVar (Var $1) }
+     | VAR                                  { TypeVar (varN $1) }
      | '(' Type ')'                         { $2 }
 
 
