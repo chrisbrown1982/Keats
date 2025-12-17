@@ -30,10 +30,8 @@ data Err = Err String -- deriving (Show)
 runTcMonad :: Context -> TcMonad a -> IO (Either Err a)
 runTcMonad con m = runExceptT $ runReaderT (Unbound.runFreshMT m) con 
 
--- err :: (MonadError Err m, MonadReader Context m) => String -> m a
 err msg = throwError $ Err msg
 
--- lookupTy :: (MonadError Err m, MonadReader Context m) => VarInfo -> m Info
 lookupTy :: VarInfo -> TcMonad Info
 lookupTy var = do 
 					con <- asks ctx
@@ -45,11 +43,7 @@ extendCtx :: (MonadReader Context m) => (VarInfo, Info) -> m a -> m a
 extendCtx entry = local (\m@Context{ctx = cs} -> m {ctx = entry : cs}) 
 
 
--- kindCheck :: Type -> Kind -> TcMonad TypeDerivation
--- kindCheck :: (MonadError Err m, MonadReader Context m) => Type -> Kind -> m TypeDerivation
 kindCheck :: Type -> Kind -> TcMonad TypeDerivation
---  :: (MonadError Err m, MonadReader Context m) =>
---     Type -> Kind -> m TyPrecondition
 kindCheck (TypeVar v) Star = do 
 							ty <- lookupTy (TypeV v)
 							case ty of
