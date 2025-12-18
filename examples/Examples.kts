@@ -7,9 +7,7 @@ type ( n : *)
 assume ( z : n)
 
 -- successor element
--- assume (s : n -> n)
-
-let s = \x . \f . \r . f (x f r) :: 
+assume (s : n -> n)
 
 let id = z : n
 
