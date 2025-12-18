@@ -35,8 +35,8 @@ printTerm (Abs bnd) = "ABS HERE" -- let (n, body) = printBinder bnd in "(\\" ++ 
 printTerm (Ann t ty) = printTerm t ++ " : " ++ printType ty
 
 printVar :: VarInfo -> String 
-printVar (TypeV x) =  x
-printVar (TermV x) =  x
+printVar (TypeV x) =  tvarString x
+printVar (TermV x) =  varString x
 
 printContext :: Context -> String 
 printContext (Context []) = ""
@@ -53,7 +53,7 @@ printInfo (HasKind k)  = printKind k
 
 printType :: Type -> String 
 printType (Fun ty1 ty2) = "(" ++ printType ty1 ++ " -> " ++ printType ty2 ++ ")"
-printType (TypeVar x) = varString x
+printType (TypeVar x) = tvarString x
 
 printConclusion :: Conclusion -> String 
 printConclusion (MkConclusion con te ty) = "{" ++ printContext con ++ "} |- " ++ printTerm te ++ " : " ++ printTypeDerivation ty

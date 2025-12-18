@@ -2,36 +2,33 @@ module Eval where
 
 import Syntax 
 
-{-
+import Control.Monad.Except
+    ( MonadError(..), ExceptT, runExceptT )
+import Unbound.Generics.LocallyNameless as Unbound
 
-data Term = 
-                Ann Term Type 
-            |   VarT Var 
-            |   App Term Term 
-            |   Abs [ Var ] Term 
-            deriving (Show, Eq)
+type Eval = Unbound.FreshMT (ExceptT Err IO)
 
--}
+runEvalMonad :: Eval a -> IO (Either Err a)
+runEvalMonad m = runExceptT $ Unbound.runFreshMT m
 
-type Env = [ (Var, Term) ]
+getTermFromDec :: Var -> [Decl] -> Term 
+getTermFromDec v [] = error $ (show v) ++ "not found!"
+getTermFromDec v (Decl n t:ds) | varString v == n = t 
+                            | otherwise  = getTermFromDec v ds 
+getTermFromDec v (Assume v2 t:ds) | v == v2 = VarT v
+getTermFromDec v (_:ds) = getTermFromDec v ds
 
--- convert all abstractions of the form
--- \a b c . e 
--- to 
--- \a . \b . \c. e 
--- everywhere
-
-deSugar :: Term -> Term 
-deSugar (Ann t ty) = Ann (deSugar t) ty
-deSugar (VarT v)   = VarT v 
-deSugar (App t1 t2) = App (deSugar t1) (deSugar t2)
-deSugar (Abs [v] t)  = Abs [v] (deSugar t)
-deSugar (Abs (v:vs) t) = Abs [v] (deSugar (Abs vs t))
-
-evalTerm :: Env -> Term -> Term 
-evalTerm en (Ann t ty)    = undefined 
-evalTerm en (VarT v)      = undefined
-evalTerm en (App (Abs [v]  t) t2)   = undefined
-evalTerm en (App (Abs [v1] t) (Abs [v2] t2))   = undefined
-evalTerm en (App t1 t2)   = App (evalTerm en t1) t2
+evalTerm :: [Decl] -> Term -> Eval Term 
+evalTerm en (Ann t ty)    = evalTerm en t 
+evalTerm en (VarT v)      = evalTerm en (getTermFromDec v en)
+evalTerm en e@(Abs bnd)   = return e
+evalTerm en (App t1 t2)   = do 
+    t1' <- evalTerm en t1 
+    t2' <- evalTerm en t2 
+    case t1' of 
+        Abs bnd -> do 
+            (x, body) <- unbind bnd 
+            let body' = subst x t2' body 
+            evalTerm en body' 
+        _ -> error "application of non-lambda"
 

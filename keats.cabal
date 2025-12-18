@@ -48,7 +48,9 @@ library
     Pretty
     Syntax
     TypeChecker
+    Eval
     REPL
+
   
 executable keats
   import: shared-properties

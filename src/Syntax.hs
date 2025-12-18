@@ -6,6 +6,8 @@ import Data.Typeable (Typeable)
 
 type Var = Name Term
 
+type TVar = Name Type
+
 data Term = 
                 Ann Term Type 
             |   VarT Var 
@@ -18,28 +20,28 @@ data Context = Context {
                         }
                     deriving (Show)
 
-data VarInfo = TypeV String
-             | TermV String
+data VarInfo = TypeV TVar
+             | TermV Var
         deriving (Generic, Show, Eq)
 
 data Info = HasType Type
           | HasKind Kind 
-        deriving (Show)
+        deriving (Show, Eq)
 
 data Type = 
               Fun Type Type 
-            | TypeVar Var
+            | TypeVar TVar
         deriving (Show, Generic, Typeable, Eq) 
 
 data Kind = Star 
-        deriving (Show)
+        deriving (Show, Eq)
 
 -- a Decl has form
 -- name : Type 
 -- name = Term 
 data Decl = Decl    String Term
           | Assume  Var Type
-          | Type Var Kind
+          | Type    TVar Kind
     deriving (Show, Generic, Typeable)
 
 
@@ -47,6 +49,8 @@ data Decl = Decl    String Term
 data Module = Module String [ Decl ]
     deriving (Show)
 
+getDecs :: Module -> [Decl]
+getDecs (Module _ decs) = decs
 
 type Precondition = Derivation 
 
@@ -90,7 +94,18 @@ var :: String -> Term
 var = VarT . string2Name
 
 -- varN :: String -> Term 
+varN :: String -> Name Term
 varN = string2Name
+
+varT :: String -> Name Type
+varT = string2Name
 
 varString :: Name Term -> String 
 varString x = name2String x
+
+tvarString :: Name Type -> String 
+tvarString x = name2String x
+
+-- Errors are just strings
+-- Change this later (also add source locations)
+data Err = Err String -- deriving (Show)

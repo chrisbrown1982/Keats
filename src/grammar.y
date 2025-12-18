@@ -7,6 +7,7 @@ import Syntax
 
 -- name of parser 
 %name keats
+%name keatsterm Term
 %tokentype { Token }
 %error { parseError }
 
@@ -37,7 +38,7 @@ Decls : Decl                                { [ $1 ]}
 
 Decl : let VAR '=' Term                     { Decl $2 $4}
      | assume '(' VAR ':' Type ')'          { Assume (varN $3) $5 }
-     | type '(' VAR ':' Kind ')'            { Type (varN $3) $5   }
+     | type '(' VAR ':' Kind ')'            { Type (varT $3) $5   }
 
 Term : Term ':' Type                        { Ann $1 $3}
      | '\\' VAR '.' Term                    { lam $2 $4}
@@ -51,7 +52,7 @@ Single : '(' Term ')'                       { $2}
      | VAR                                  { var $1}
 
 Type : Type '->' Type                       { Fun $1 $3 }
-     | VAR                                  { TypeVar (varN $1) }
+     | VAR                                  { TypeVar (varT $1) }
      | '(' Type ')'                         { $2 }
 
 
@@ -64,4 +65,7 @@ parseError t = error ("Parse error " ++ (show t))
 
 parseModule :: String -> Module
 parseModule = keats . scanTokens
+
+parseTerm :: String -> Term 
+parseTerm = keatsterm . scanTokens 
 }
