@@ -11,18 +11,23 @@ assume (s : n -> n)
 
 let id = z : n
 
+-- addition
+let add = (\m . \n . ((\f . \x . m f (n f x)) : (n -> n) -> (n -> n)) ) 
+ 	: ((n -> n) -> (n -> n)) -> ((n -> n) -> (n -> n)) -> ((n -> n) -> (n -> n))
+
 -- church numerals
 -- (\f . \x . x )
-let test = (\x . x) : (n -> n)
-let zero = (\f . \x . x) : (n -> n) -> (n -> n)
-let one = (\f . \x . (f x)) : (n -> n) -> (n -> n)
-let two = (\f . \ x . (f (f x))) : (n -> n) -> (n -> n)
+let test = (\n . n) : (n -> n)
+let zero = (\f . ((\x . x) : (n -> n))) : (n -> n) -> (n -> n)
+
+-- let one = (\n . \x . (n x)) : (n -> n) -> (n -> n)
+-- let two = (\f . \ n . (f (f n))) : (n -> n) -> (n -> n)
 
 -- some numbers
-let n0 = zero s z
-let n1 = one s z
-let n2 = two s z
+-- let n0 = zero s z
+-- let n1 = one s z
+-- let n2 = two s z
 
 -- addition
-let add = (\m . \n2 . ((\f . \x . m f (n2 f x)) : (n -> n) -> (n -> n))) 
-	: ((n -> n) -> (n -> n)) -> ((n -> n) -> (n -> n)) -> ((n -> n) -> (n -> n))
+-- let add = (\m . \n . ((\f . \x . m f (n f x)) : (n -> n) -> (n -> n))) 
+-- 	: ((n -> n) -> (n -> n)) -> ((n -> n) -> (n -> n)) -> ((n -> n) -> (n -> n))

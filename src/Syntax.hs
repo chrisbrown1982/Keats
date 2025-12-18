@@ -18,8 +18,8 @@ data Context = Context {
                         }
                     deriving (Show)
 
-data VarInfo = TypeV Var
-             | TermV Var
+data VarInfo = TypeV String
+             | TermV String
         deriving (Generic, Show, Eq)
 
 data Info = HasType Type

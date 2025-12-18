@@ -4,6 +4,8 @@ import Syntax
 
 import Pretty
 
+import Control.Monad.IO.Class
+
 import Control.Monad.Except
     ( MonadError(..), ExceptT, runExceptT )
 import Control.Monad.Reader
@@ -35,6 +37,7 @@ err msg = throwError $ Err msg
 lookupTy :: VarInfo -> TcMonad Info
 lookupTy var = do 
 					con <- asks ctx
+					liftIO $ putStrLn ((show var) ++ " <> " ++ (show con))
 					case lookup var con of 
 						Just ty1 -> return ty1
 						Nothing  -> error ("Nothing in context for " ++ (printVar var) ++ " in context " ++ (printContext (Context con)))
@@ -45,7 +48,7 @@ extendCtx entry = local (\m@Context{ctx = cs} -> m {ctx = entry : cs})
 
 kindCheck :: Type -> Kind -> TcMonad TypeDerivation
 kindCheck (TypeVar v) Star = do 
-							ty <- lookupTy (TypeV v)
+							ty <- lookupTy (TypeV (name2String v))
 							case ty of
 								HasKind Star -> do
 													con <- asks ctx
@@ -67,12 +70,12 @@ typeCheckM (Module name decls) = typeCheckDecls decls
 
 typeCheckDecls :: [ Decl ] -> TcMonad [ (String, Derivation) ]
 typeCheckDecls [] = return [] 
-typeCheckDecls (Assume v t : decs ) = extendCtx (TermV v, HasType t) (typeCheckDecls decs)	
-typeCheckDecls (Type v k : decs) = extendCtx (TypeV v, HasKind k) (typeCheckDecls decs)
+typeCheckDecls (Assume v t : decs ) = extendCtx (TermV (name2String v), HasType t) (typeCheckDecls decs)	
+typeCheckDecls (Type v k : decs) = extendCtx (TypeV (name2String v), HasKind k) (typeCheckDecls decs)
 typeCheckDecls (Decl n t : ds) = do
 									-- kD <- kindCheck t Star
 									p@(MkDerivation pre (MkConclusion con' t' (MkTyDerivation _ (MkTyConclusion _ ty ki)))) <- inferType t 
-									ps <- extendCtx (TermV (varN n), HasType ty) (typeCheckDecls ds)
+									ps <- extendCtx (TermV n, HasType ty) (typeCheckDecls ds)
 									return ((n,p):ps)
 
 getType :: Derivation -> Type
@@ -86,7 +89,8 @@ typeCheck :: Term -> Type -> TcMonad Derivation
 typeCheck a@(Abs bnd) (Fun ty1 ty2) = do 
 		kD <- kindCheck (Fun ty1 ty2) Star
 		(x, body) <- unbind bnd 
-		p <- extendCtx (TermV x, HasType ty1) (typeCheck body ty2)
+		liftIO $ putStrLn ("Abs : " ++ show x)
+		p <- extendCtx (TermV (name2String x), HasType ty1) (typeCheck body ty2)
 		con <- asks ctx
 		if getType p == ty2 then return $  MkDerivation [p] (MkConclusion (Context con) a kD)
 			 	     	    else err ("Type  in abstraction " ++ (printTerm a) ++ " doesn't match expected type " ++ (printType ty2))
@@ -107,17 +111,20 @@ typeCheck t ty = do
 
 inferType :: Term -> TcMonad Derivation
 inferType (Ann t ty) = do 
+							liftIO $ putStrLn ("Ann : " ++ show t ++ " " ++ show ty)
 							kD <- kindCheck ty Star
 							tD <- typeCheck t ty
 							con <- asks ctx
 							return $ MkDerivation [tD] (MkConclusion (Context con) t kD)
 
 inferType (VarT v) = do 
-						HasType ty <- lookupTy (TermV v) 
+						liftIO $ putStrLn ("Var : " ++ show v)
+						HasType ty <- lookupTy (TermV (name2String v)) 
 						kD <- kindCheck ty Star
 						con <- asks ctx
 						return $ MkDerivation [] (MkConclusion (Context con) (VarT v) kD)
 inferType a@(App t1 t2) = do 
+	liftIO $ putStrLn ("App : " ++ show t1 ++ " " ++ show t2)
 	p1@(MkDerivation pre (MkConclusion con' t1 (MkTyDerivation _ (MkTyConclusion _ (Fun ty1 ty2) ki)))) <- inferType t1 
 	p2 <- typeCheck t2 ty1 
 	con <- asks ctx

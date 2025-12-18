@@ -35,8 +35,8 @@ printTerm (Abs bnd) = "ABS HERE" -- let (n, body) = printBinder bnd in "(\\" ++ 
 printTerm (Ann t ty) = printTerm t ++ " : " ++ printType ty
 
 printVar :: VarInfo -> String 
-printVar (TypeV x) = varString x
-printVar (TermV x) = varString x
+printVar (TypeV x) =  x
+printVar (TermV x) =  x
 
 printContext :: Context -> String 
 printContext (Context []) = ""
