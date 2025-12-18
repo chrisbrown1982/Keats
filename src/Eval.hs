@@ -28,7 +28,6 @@ evalTerm en (VarT v)      = do
         t      -> evalTerm en t 
 evalTerm en e@(Abs bnd)   = do 
     (x, body) <- unbind bnd 
-    liftIO $ putStrLn (show e)
     body' <- evalTerm (Decl (varString x) (VarT x):en) body
     return (Abs (bind x body'))
 evalTerm en e@(App (VarT v) t2) = do
