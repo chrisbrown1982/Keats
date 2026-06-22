@@ -1,4 +1,4 @@
-module Pretty2 (Display (..), PP.render, disp) where
+module Pretty2 (Display (..), PP.render, disp, printTypeDef) where
 
 import Control.Monad.Reader (MonadReader (ask, local), asks)
 import Data.Set qualified as S
@@ -117,6 +117,11 @@ instance Display [(String, Derivation)] where
       pure $ PP.text n <+> PP.text " = " <+> tc <+> PP.text "\n" <+> ds'
 -------------------------------------------------------------------------
 
+printTypeDef d [] = "Cannot find definition in context to print!"
+printTypeDef d ((n,de):ds) | d == n =  n ++ " = " ++ (PP.render $ disp de ) ++ "\n"
+                        | otherwise  = printTypeDef d ds
+
+-------------------------------------------------------------------------
 instance Unbound.LFresh ((->) DispInfo) where
   lfresh nm = do
     let s = Unbound.name2String nm

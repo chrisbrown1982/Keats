@@ -125,12 +125,9 @@ executeCommand int con cmd = case cmd of
                     Left (Err e) -> do 
                                 putStrLn e 
                                 return (Just con)
-	TypeOf d -> do  error "ERROR2"
-         --           d' <- runTcMonad (Context []) (printTypeDef d (snd con))
-         --           case d' of 
-         --               Right d'' -> do 
-         --                              putStrLn d''
-         --                              return (Just con)
+	TypeOf d -> do  
+                 putStrLn (Pretty2.printTypeDef d (snd con))
+                 return (Just con)
          --               Left (Err e) -> do 
          --                         putStrLn e 
          --                         return (Just con)
