@@ -30,10 +30,11 @@ common shared-properties
   build-depends:  
     base,
     mtl,
+    pretty,
     unbound-generics,
     transformers,
     array,
-    containers,
+    containers == 0.7,
     directory,
     filepath,
     boxes   
@@ -50,6 +51,7 @@ library
     TypeChecker
     Eval
     REPL
+    Pretty2
 
   
 executable keats

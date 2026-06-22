@@ -11,6 +11,7 @@ https://github.com/ilya-klyuchnikov/lambdapi/blob/master/src/REPL.hs
 import Syntax
 import TypeChecker
 import Grammar
+import Pretty2
 import Pretty
 import Text.PrettyPrint.Boxes
 import Control.Monad.Except
@@ -19,6 +20,10 @@ import System.IO.Error
 import Data.Char
 import Data.List
 import Eval
+import Unbound.Generics.LocallyNameless qualified as Unbound
+
+
+-- instance Unbound.LFresh IO
 
 data Interpreter =
   I {
@@ -69,6 +74,7 @@ repl int con =
 	let rec int con = 
 		do 
 			putStr (iprompt int)
+			hFlush stdout
 			x <- catchIOError (fmap Just getLine) (\_ -> return Nothing)
 			case x of 
 				Nothing -> return () 
@@ -105,21 +111,32 @@ executeCommand int con cmd = case cmd of
 	Help 	-> putStr (helpTxt commands) >> return (Just con)
 	Noop    -> return (Just con)
 	Load f  -> do 
-				x <- readFile f 
-				let mod = parseModule x 
-		
-				der <- runTcMonad (Context []) (typeCheckM mod)
-				case der of 
-					Right d -> do 
-								putStrLn $ printDerivations d
-								return (Just (getDecs mod, d))
-					Left (Err e) -> do 
-								putStrLn e 
-								return (Just con)
-	TypeOf d -> do 
-					putStrLn (printTypeDef d (snd con)) >> return (Just con)
+                x <- readFile f 
+                let mod = parseModule x 
+                der <- runTcMonad (Context []) (typeCheckM mod)
+                case der of 
+                    Right d -> do 
+                                let d' = Pretty2.render $ disp d
+                                putStrLn d'
+                                return (Just (getDecs mod, d))
+                       --             Left (Err e) -> do 
+                       --                            putStrLn e 
+                       --                            return (Just con)
+                    Left (Err e) -> do 
+                                putStrLn e 
+                                return (Just con)
+	TypeOf d -> do  error "ERROR2"
+         --           d' <- runTcMonad (Context []) (printTypeDef d (snd con))
+         --           case d' of 
+         --               Right d'' -> do 
+         --                              putStrLn d''
+         --                              return (Just con)
+         --               Left (Err e) -> do 
+         --                         putStrLn e 
+         --                         return (Just con)
 	Derivation d -> do
-				printBox (printDerivationDef d (snd con)) >> return (Just con)
+				printBox (printDerivationDef d (snd con))
+				return (Just con)
 	Parse f -> do 
 				x <- readFile f 
 				let mod = parseModule x 
@@ -131,7 +148,7 @@ executeCommand int con cmd = case cmd of
 				t' <- runEvalMonad $ evalTerm (fst con) term 
 				case t' of 
 					Right t'' -> do 
-									putStrLn (show t'' )
+									putStrLn (Pretty2.render (disp t''))
 									return (Just con)
 					Left (Err err) -> error err
 

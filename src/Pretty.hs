@@ -4,13 +4,39 @@ import Data.Tree
 import Text.PrettyPrint.Boxes
 import GHC.Conc (childHandler)
 import Unbound.Generics.LocallyNameless qualified as Unbound
-
+import Text.PrettyPrint (Doc)
+import qualified Text.PrettyPrint as PP
 import Syntax
 
--- printBinder :: Term -> (String, String)
+{-
+instance Unbound.LFresh ((->) DispInfo) where
+  lfresh nm = do
+    let s = Unbound.name2String nm
+    di <- ask
+    return $
+      head
+        ( filter
+            (\x -> Unbound.AnyName x `S.notMember` dispAvoid di)
+            (map (Unbound.makeName s) [0 ..])
+        )
+  getAvoids = asks dispAvoid
+  avoid names = local upd
+    where
+      upd di =
+        di
+          { dispAvoid =
+              S.fromList names `S.union` dispAvoid di
+          }
+-}
+
+instance Unbound.LFresh Tree 
+
+-- printBinder :: Unbound.LFresh m =>
+--                 Unbound.Bind (Unbound.Name Term) Term -> m (String, String)
 printBinder b = 
     Unbound.lunbind b $ \(n, body) -> do 
-        return (varString n, printTerm body)
+        body' <- printTerm body
+        return (varString n, body')
         
 
 printDerivationDef :: String -> [ (String, Derivation) ] -> Box 
@@ -18,21 +44,38 @@ printDerivationDef d [] = error "Cannot find definition in context to print!"
 printDerivationDef d ((n,de):ds) | d == n     = pp (derivationTree de)
                         		 | otherwise  = printDerivationDef d ds
 
-printTypeDef :: String -> [ (String, Derivation) ] -> String 
-printTypeDef d [] = "Cannot find definition in context to print!"
-printTypeDef d ((n,de):ds) | d == n     = n ++ " = " ++ printTypeConclusion de ++ "\n"
+-- printTypeDef :: Unbound.LFresh m => String -> [ (String, Derivation) ] -> m String 
+printTypeDef d [] = return "Cannot find definition in context to print!"
+printTypeDef d ((n,de):ds) | d == n = do 
+                                        tc <- printTypeConclusion de  
+                                        return $ n ++ " = " ++ tc ++ "\n"
                         | otherwise  = printTypeDef d ds
 
-printDerivations :: [ (String, Derivation) ] -> String 
-printDerivations [] = ""
-printDerivations ((n,d):ds) = n ++ " = " ++ printTypeConclusion d ++ "\n" ++ printDerivations ds
+-- printDerivations :: Unbound.LFresh m => [ (String, Derivation) ] -> m String 
+printDerivations [] = return ""
+printDerivations ((n,d):ds) = 
+    do 
+      tc <- printTypeConclusion d
+      ds' <- printDerivations ds
+      return $ n ++ " = " ++ tc ++ "\n" ++ ds'
 
-printTerm :: Term -> String 
-printTerm (VarT x) = varString x 
-printTerm (App t1 t@(App t2 t3)) = printTerm t1 ++ " (" ++ printTerm t ++ ")"
-printTerm (App t1 t2) = printTerm t1 ++ " " ++ printTerm t2
-printTerm (Abs bnd) = "ABS HERE" -- let (n, body) = printBinder bnd in "(\\" ++ n ++ ". " ++ body ++ ")"
-printTerm (Ann t ty) = printTerm t ++ " : " ++ printType ty
+-- printTerm :: Unbound.LFresh m => Term -> m String 
+printTerm (VarT x) = return $ varString x 
+printTerm (App t1 t@(App t2 t3)) = do 
+    t1' <- printTerm t1
+    t2' <- printTerm t2
+    t' <- printTerm t 
+    return $ t1' ++ " (" ++ t' ++ ")"
+printTerm (App t1 t2) = do
+    t1' <- printTerm t1 
+    t2' <- printTerm t2 
+    return $ t1' ++ " " ++ t2'
+printTerm (Abs bnd) = do 
+      (n, body) <- printBinder bnd 
+      return $ "(\\" ++ n ++ ". " ++ body ++ ")"
+printTerm (Ann t ty) = do
+    t' <- printTerm t 
+    return $ t' ++ " : " ++ printType ty
 
 printVar :: VarInfo -> String 
 printVar (TypeV x) =  tvarString x
@@ -55,16 +98,26 @@ printType :: Type -> String
 printType (Fun ty1 ty2) = "(" ++ printType ty1 ++ " -> " ++ printType ty2 ++ ")"
 printType (TypeVar x) = tvarString x
 
-printConclusion :: Conclusion -> String 
-printConclusion (MkConclusion con te ty) = "{" ++ printContext con ++ "} |- " ++ printTerm te ++ " : " ++ printTypeDerivation ty
+-- printConclusion :: Unbound.LFresh m => Conclusion -> m String 
+printConclusion (MkConclusion con te ty) =
+    do
+    te' <- printTerm te    
+    return $ "{" ++ printContext con ++ "} |- " ++ te' ++ " : " ++ printTypeDerivation ty
 
 derivationTree :: Derivation -> Tree String 
-derivationTree (MkDerivation child con) = Node (printConclusion con) (mkChildren child)
+derivationTree (MkDerivation child con) = 
+    do 
+      con' <- printConclusion con
+      Node con' (mkChildren child)
     where mkChildren [] = [] 
           mkChildren (p:ps) = derivationTree p : mkChildren ps
 
-printTypeConclusion :: Derivation -> String 
-printTypeConclusion (MkDerivation child (MkConclusion con te ty)) = printTerm te ++ " : " ++ printTypeDerivation ty
+-- printTypeConclusion :: Unbound.LFresh m => Derivation -> m String 
+printTypeConclusion (MkDerivation child (MkConclusion con te ty)) =
+    do
+      t <- printTerm te
+      
+      return $ t ++ " : " ++ printTypeDerivation ty
 
 printTypeDerivation :: TypeDerivation -> String 
 printTypeDerivation (MkTyDerivation child (MkTyConclusion _ ty _) ) = printType ty 

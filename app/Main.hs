@@ -6,7 +6,7 @@ import REPL
 import Data.Maybe
 
 main :: IO ()
-main = repl inter [] 
+main = repl inter ([],[]) 
 
 
 

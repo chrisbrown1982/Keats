@@ -2,6 +2,8 @@ module TypeChecker where
 
 import Syntax
 
+import Pretty2
+
 import Pretty
 
 import Control.Monad.IO.Class
@@ -9,7 +11,7 @@ import Control.Monad.IO.Class
 import Control.Monad.Except
     ( MonadError(..), ExceptT, runExceptT )
 import Control.Monad.Reader
-    ( MonadReader(local), asks, ReaderT(runReaderT) )
+    ( MonadReader(local), asks, ReaderT(runReaderT), lift )
 import Unbound.Generics.LocallyNameless as Unbound
 import Unbound.Generics.LocallyNameless.Fresh
 
@@ -20,7 +22,11 @@ import Unbound.Generics.LocallyNameless.Fresh
 -- and to allow for debugging
 type TcMonad = Unbound.FreshMT (ReaderT Context (ExceptT Err IO))
 
+-- instance Unbound.LFresh (FreshMT (ReaderT Context (ExceptT Err IO)))
 
+-- instance MonadReader Context (FreshMT (ReaderT Context (ExceptT Err IO)))
+
+-- instance MonadError Err (FreshMT (ReaderT Context (ExceptT Err IO)))
 
 -- Entry point for the type checking monad.
 -- Given a context, and a typechecker
@@ -34,11 +40,11 @@ err msg = throwError $ Err msg
 
 lookupTy :: VarInfo -> TcMonad Info
 lookupTy var = do 
-					con <- asks ctx
-					liftIO $ putStrLn ((show var) ++ " <> " ++ (show con))
-					case lookup var con of 
-						Just ty1 -> return ty1
-						Nothing  -> error ("Nothing in context for " ++ (printVar var) ++ " in context " ++ (printContext (Context con)))
+				con <- asks ctx
+				liftIO $ putStrLn ((show var) ++ " <> " ++ (show con))
+				case lookup var con of 
+					Just ty1 -> return ty1
+					Nothing  -> error ("Nothing in context for " ++ (printVar var) ++ " in context " ++ (printContext (Context con)))
 
 extendCtx :: (MonadReader Context m) => (VarInfo, Info) -> m a -> m a
 extendCtx entry = local (\m@Context{ctx = cs} -> m {ctx = entry : cs}) 
@@ -91,7 +97,9 @@ typeCheck a@(Abs bnd) (Fun ty1 ty2) = do
 		p <- extendCtx (TermV x, HasType ty1) (typeCheck body ty2)
 		con <- asks ctx
 		if (getType p) == ty2 then return $  MkDerivation [p] (MkConclusion (Context con) a kD)
-			 	     	      else err ("Type  in abstraction " ++ (printTerm a) ++ " doesn't match expected type " ++ (printType ty2))
+			 	     	      else do 
+								 let a' = render $ disp a
+								 err ("Type  in abstraction " ++ a' ++ " doesn't match expected type " ++ (printType ty2))
 {-
 typeCheck a@(Abs (v:vars) t) (Fun ty1 ty2) = do
 		-- extend the context to contain the new lambda expression
@@ -106,7 +114,10 @@ typeCheck t ty = do
 					p <- inferType t 
 				 	if ty == (getType p)
 						   then return p 
-				 		   else err ("Type Mismatch in Term " ++ (printTerm t) ++ " with type " ++ (printType ty) ++ " but expected " ++ (printType (getType p)))
+				 		   else do 
+							let t' = render $ disp t
+							-- t' <- printTerm t
+							err ("Type Mismatch in Term " ++ t' ++ " with type " ++ (printType ty) ++ " but expected " ++ (printType (getType p)))
 
 inferType :: Term -> TcMonad Derivation
 inferType (Ann t ty) = do 
@@ -131,6 +142,5 @@ inferType a@(App t1 t2) = do
 			     	       else err "Application type error!"
 
 inferType t = do 
-				err ("unable to infer type for term " ++ (printTerm t))
-
-
+                let t' = render $ disp t 
+                err ("unable to infer type for term " ++ t')

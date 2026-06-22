@@ -18,15 +18,15 @@ data Term =
 data Context = Context {
                          ctx :: [ (VarInfo, Info) ]
                         }
-                    deriving (Show)
+                    deriving (Show, Generic, Typeable)
 
 data VarInfo = TypeV TVar
              | TermV Var
-        deriving (Generic, Show, Eq)
+        deriving (Generic, Show, Eq, Typeable)
 
 data Info = HasType Type
           | HasKind Kind 
-        deriving (Show, Eq)
+        deriving (Show, Eq, Generic, Typeable)
 
 data Type = 
               Fun Type Type 
@@ -34,7 +34,7 @@ data Type =
         deriving (Show, Generic, Typeable, Eq) 
 
 data Kind = Star 
-        deriving (Show, Eq)
+        deriving (Show, Eq,Generic, Typeable)
 
 -- a Decl has form
 -- name : Type 
@@ -55,26 +55,42 @@ getDecs (Module _ decs) = decs
 type Precondition = Derivation 
 
 data Conclusion = MkConclusion Context Term TypeDerivation
-    deriving (Show)
+    deriving (Show, Generic, Typeable)
 
 
 data Derivation = 
         MkDerivation [ Precondition ] Conclusion
-    deriving (Show)
+    deriving (Show, Generic, Typeable)
 
 type TyPrecondition = TypeDerivation
 
 data TyConclusion = MkTyConclusion Context Type Kind 
-    deriving (Show)
+    deriving (Show, Generic, Typeable)
 
 data TypeDerivation = 
         MkTyDerivation [ TyPrecondition ] TyConclusion
-    deriving (Show)
+    deriving (Show, Generic, Typeable)
 
 -- Derives alpha equivalence
 instance Alpha Type
 
 instance Alpha Term
+
+instance Alpha Conclusion
+
+instance Alpha Derivation 
+
+instance Alpha Context
+
+instance Alpha VarInfo
+
+instance Alpha Info
+
+instance Alpha Kind 
+
+instance Alpha TypeDerivation
+
+instance Alpha TyConclusion
 
 -- capture avoiding substitution
 instance Subst Term Term where 
